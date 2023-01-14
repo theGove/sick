@@ -6,7 +6,7 @@ async function server_request(payload, callback){
     //This function is used to invoke a function in Google App Script to interact with Airtable. This is desireable so that we can isolate the information needed to interact with the data from the client browser.
     //if a callback is not provided  this function waits until the call is complete
     tag("working").style.display="block"
-    //console.log("const payload=`" + JSON.stringify(payload) + "`")//This is primarily useful for troubleshooting. The data passed to Google App Script is sent to the console.
+    console.log("const payload=`" + JSON.stringify(payload) + "`")//This is primarily useful for troubleshooting. The data passed to Google App Script is sent to the console.
     //The request for Google App Script is formatted.
     const options = { 
         method: "POST", 
@@ -35,13 +35,13 @@ async function server_request(payload, callback){
 
 async function initialize_app(){ 
     //This function initializes the page when it is loaded.
-    //tag("canvas").innerHTML="Howdy"
+    tag("netid").focus()
 
 }
 
-async function get_form(){
-    const byuid = tag("byuid").value
-    //console.log(byuid, byuid.length)
+function valid_input(){
+    const byuid = tag("byuid").value.replace(/\D/g,'')// remove all non-numeric characters.
+    console.log(byuid, byuid.length)
     if(byuid.length!==9){
         message({
             title:"Error",
@@ -49,7 +49,7 @@ async function get_form(){
             kind:"error",
             seconds:5
         }) 
-        return
+        return false
     }
 
     if(tag("netid").value.length===0){
@@ -59,16 +59,20 @@ async function get_form(){
             kind:"error",
             seconds:5
         }) 
-        return
+        return false
     }
 
-    
+    return true
+}
 
+async function get_form(){
+    if(!valid_input()){return}
+    const pw=await hash_string(tag("pw").value+tag("netid").value)
     response = await server_request({
         mode:"get_data",
         netid:tag("netid").value,
-        byuid:byuid,
-        pw:tag("pw").value,
+        byuid:tag("byuid").value.replace(/\D/g,''),
+        pw:pw,
     })
 
     if(response.error){
@@ -79,7 +83,7 @@ async function get_form(){
             seconds:8
         }) 
     }
-    const html=[`<table align="center"><tr><td colspan="2">Enter as many or as few as desired. <br> You can make changes later.</td></tr>`]
+    const html=[`<table align="center"><tr><td colspan="2"><div style="margin-bottom:.5rem">Enter as many or as few as desired. <br> You can make changes later.</div></td></tr>`]
     for(const item of response){
         let val=""
         if(item.value){val=item.value}
@@ -91,28 +95,8 @@ async function get_form(){
 
 
 async function send_data(){
-    const byuid = tag("byuid").value
-    //console.log(byuid, byuid.length)
-    if(byuid.length!==9){
-        message({
-            title:"Error",
-            message:"Your BYU ID must be 9 digits long",
-            kind:"error",
-            seconds:5
-        }) 
-        return
-    }
-
-    if(tag("netid").value.length===0){
-        message({
-            title:"Error",
-            message:"Net ID is required",
-            kind:"error",
-            seconds:5
-        }) 
-        return
-    }
-
+    if(!valid_input()){return}
+    
 
 
     const body={mode:"update_data"}
@@ -121,6 +105,10 @@ async function send_data(){
         body[elem.id]=elem.value
       }
     }
+
+    body.pw=await hash_string(tag("pw").value+tag("netid").value)
+    body.byuid=body.byuid.replace(/\D/g,'')
+
     //console.log(body)
     response = await server_request(body)
     if(response.error){
@@ -207,22 +195,18 @@ function tag(id){
     return document.getElementById(id)
 }
 
-function toggle(tag_or_id,display="block"){log(2,arguments,filename,toggle)
-    
-    
-    let element=tag_or_id
-    if(!element.tagName){
-        // assume caller passed in a tag id, as tag_or_id 
-        // does not have a tag name it cannot be a tag
-        element=tag(tag_or_id)
-    }
-
-    //console.log("element", element)
-    if(element.style && element.style.display===display){
-        element.style.display="none"
-        return false
+function toggle(id){
+    if(tag(id).style.display==="none"){
+        tag(id).style.display="block"
     }else{
-        element.style.display=display
-        return true
+        tag(id).style.display="none"
     }
 }
+
+async function hash_string(message) {
+    const msgUint8 = new TextEncoder().encode(message);                           // encode as (utf-8) Uint8Array
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);           // hash the message
+    const hashArray = Array.from(new Uint8Array(hashBuffer));                     // convert buffer to byte array
+    const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join(''); // convert bytes to hex string
+    return hashHex;
+  }
