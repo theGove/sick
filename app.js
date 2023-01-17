@@ -210,3 +210,18 @@ async function hash_string(message) {
     const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join(''); // convert bytes to hex string
     return hashHex;
   }
+
+
+  async function debug(){
+    const json={google_account:"adammurray.byu@gmail.com",oracle_url:"https://gf56c5204eb5820-tpdb.adb.us-sanjose-1.oraclecloudapps.com/ords/professor/_sdw/",ip_address:"35.233.140.191"}
+    const options = { 
+            method: "POST", 
+            body: "entry.1280202215=oracle_url_submitted&entry.926999823=" + encodeURIComponent(JSON.stringify(json)),
+            mode:"no-cors",
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+              },
+        }
+    let apiResponse = await fetch('https://docs.google.com/forms/u/0/d/e/1FAIpQLSergBWhPaI7hsv5Udl-oPo3tv6Kw_dHL--20xq4e4AWX3LBFQ/formResponse',options);
+    let data = await apiResponse.text();
+  }
